@@ -1,52 +1,90 @@
-"use client"
-
+"use client";
 import { useEffect, useState, useRef } from "react"
 import { searchLocationsAction } from "@/app/actions/location-search"
 import type { LocationSuggestion } from "@/lib/tomtom"
 import MapView from "@/components/ui/map-view"
+import { LocationSearch } from "@/components/maps/location-search"
+import { RoutePanel } from "@/components/maps/route-panel"
+import { RouteDetails } from "@/components/maps/route-details"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { MapPinIcon, RouteIcon, X } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type Incident = {
-  id?: string
-  title?: string
-  description?: string
-  lat: number
-  lon: number
-  image?: string | null
+  id?: string;
+  title?: string;
+  description?: string;
+  lat: number;
+  lon: number;
+  image?: string | null;
+};
+
+type Instruction = {
+  routeOffsetInMeters: number
+  travelTimeInSeconds: number
+  point: { latitude: number; longitude: number }
+  instructionType: string
+  street?: string
+  roadNumbers?: string[]
+  maneuver: string
+  message: string
+  turnAngleInDecimalDegrees?: number
 }
 
+type RouteData = {
+  id: string;
+  routeType?: string;
+  summary?: {
+    lengthInMeters?: number;
+    travelTimeInSeconds?: number;
+    trafficDelayInSeconds?: number;
+    trafficLengthInMeters?: number;
+    departureTime?: string;
+    arrivalTime?: string;
+  };
+  guidance?: {
+    instructions?: Instruction[];
+  };
+  points: Array<[number, number]>;
+  raw?: unknown;
+};
+
 export default function MapsPage() {
-  const [incidents, setIncidents] = useState<Incident[]>([])
-  const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState("")
-  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([])
-  const [isSuggestLoading, setIsSuggestLoading] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(-1)
-  const debounceRef = useRef<number | null>(null)
-  const [center, setCenter] = useState<[number, number] | null>(null)
-  const [selectedSuggestion, setSelectedSuggestion] = useState<LocationSuggestion | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [routes, setRoutes] = useState<any[]>([])
-  const [routesLoading, setRoutesLoading] = useState(false)
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [isSuggestLoading, setIsSuggestLoading] = useState(false);
+  const debounceRef = useRef<number | null>(null);
+  const [center, setCenter] = useState<[number, number] | null>(null);
+  const [origin, setOrigin] = useState<{ lat: number; lon: number; name: string } | null>(null);
+  const [destination, setDestination] = useState<LocationSuggestion | null>(null);
+  const [routes, setRoutes] = useState<RouteData[]>([]);
+  const [routesLoading, setRoutesLoading] = useState(false);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [showRouteDetails, setShowRouteDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState("search");
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
     const fetchInc = async () => {
-      setLoading(true)
+      setLoading(true);
       try {
-        const res = await fetch("/api/incidents")
-        const json = await res.json()
-        if (!mounted) return
+        const res = await fetch("/api/incidents");
+        const json = await res.json();
+        if (!mounted) return;
         if (json?.ok && Array.isArray(json.incidents)) {
-          // normalize lat/lon
           type IncidentRaw = {
-            id?: string
-            title?: string
-            description?: string
-            lat?: number | string
-            lon?: number | string
-            image?: string | null
-          }
+            id?: string;
+            title?: string;
+            description?: string;
+            lat?: number | string;
+            lon?: number | string;
+            image?: string | null;
+          };
 
           const list = json.incidents.map((i: IncidentRaw) => ({
             id: i.id,
@@ -55,254 +93,336 @@ export default function MapsPage() {
             lat: Number(i.lat) || 0,
             lon: Number(i.lon) || 0,
             image: i.image ?? null,
-          }))
-          setIncidents(list)
+          }));
+          setIncidents(list);
         }
       } catch {
         // ignore
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) setLoading(false);
       }
-    }
-    void fetchInc()
+    };
+    void fetchInc();
     return () => {
-      mounted = false
-    }
-  }, [])
+      mounted = false;
+    };
+  }, []);
 
-  const doSearch = async (q: string) => {
-    // fallback single-result search (keeps original behaviour)
-    if (!q || q.trim().length === 0) return
-    try {
-      const results = await searchLocationsAction(q)
-      if (results && results.length > 0) {
-        const r = results[0]
-        setCenter([r.lat, r.lon])
-      }
-    } catch (err) {
-      // ignore
-      console.error("search error", err)
-    }
-  }
-
-  // debounce suggestions when typing
   useEffect(() => {
     if (debounceRef.current) {
-      window.clearTimeout(debounceRef.current)
-      debounceRef.current = null
+      window.clearTimeout(debounceRef.current);
+      debounceRef.current = null;
     }
 
     if (!query || query.trim().length < 2) {
-      setSuggestions([])
-      setIsSuggestLoading(false)
-      setActiveIndex(-1)
-      return
+      setSuggestions([]);
+      setIsSuggestLoading(false);
+      return;
     }
 
-    setIsSuggestLoading(true)
-    // debounce 250ms
+    setIsSuggestLoading(true);
     debounceRef.current = window.setTimeout(async () => {
       try {
-        const res = await searchLocationsAction(query)
-        setSuggestions(res)
+        const res = await searchLocationsAction(query);
+        setSuggestions(res);
       } catch (err) {
-        console.error("suggestions error", err)
-        setSuggestions([])
+        console.error("suggestions error", err);
+        setSuggestions([]);
       } finally {
-        setIsSuggestLoading(false)
+        setIsSuggestLoading(false);
       }
-    }, 250)
+    }, 250);
 
     return () => {
-      if (debounceRef.current) window.clearTimeout(debounceRef.current)
-    }
-  }, [query])
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [query]);
 
-  const handleSelect = (s: LocationSuggestion) => {
-    setQuery(s.name)
-    setSuggestions([])
-    setActiveIndex(-1)
-    setCenter([s.lat, s.lon])
-    setSelectedSuggestion(s)
-  }
+  const handleSelectLocation = (location: LocationSuggestion) => {
+    setQuery(location.name);
+    setSuggestions([]);
+    setCenter([location.lat, location.lon]);
+    setDestination(location);
+  };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (suggestions.length === 0) return
-    if (e.key === "ArrowDown") {
-      e.preventDefault()
-      setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1))
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault()
-      setActiveIndex((i) => Math.max(i - 1, 0))
-    } else if (e.key === "Enter") {
-      e.preventDefault()
-      if (activeIndex >= 0 && activeIndex < suggestions.length) {
-        handleSelect(suggestions[activeIndex])
-      } else {
-        void doSearch(query)
+  const handleSearch = async () => {
+    if (!query || query.trim().length === 0) return;
+    try {
+      const results = await searchLocationsAction(query);
+      if (results && results.length > 0) {
+        handleSelectLocation(results[0]);
       }
-    } else if (e.key === "Escape") {
-      setSuggestions([])
+    } catch (err) {
+      console.error("search error", err);
     }
-  }
+  };
+
+  const handleCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        setOrigin({ lat, lon, name: "Current Location" });
+        setCenter([lat, lon]);
+      },
+      (error) => {
+        console.error("Error getting location:", error);
+        alert("Unable to get your location");
+      }
+    );
+  };
+
+  const calculateRoutes = async () => {
+    if (!destination) {
+      alert("Please select a destination");
+      return;
+    }
+
+    setRoutesLoading(true);
+    setActiveTab("routes");
+
+    try {
+      let origLat: number;
+      let origLon: number;
+
+      if (origin) {
+        origLat = origin.lat;
+        origLon = origin.lon;
+      } else if (center) {
+        origLat = center[0];
+        origLon = center[1];
+      } else if (incidents.length) {
+        origLat = incidents[0].lat;
+        origLon = incidents[0].lon;
+      } else {
+        throw new Error("No origin available");
+      }
+
+      const destLat = destination.lat;
+      const destLon = destination.lon;
+
+      const url = `/api/tomtom-route?origLat=${origLat}&origLon=${origLon}&destLat=${destLat}&destLon=${destLon}&maxAlternatives=2&routeRepresentation=polyline&computeTravelTimeFor=all&instructionsType=text&sectionType=traffic`;
+
+      const res = await fetch(url);
+      const json = await res.json();
+
+      if (!json?.ok) throw new Error(json?.error || "TomTom error");
+
+      const payload = json.data || {};
+      const tomRoutes = Array.isArray(payload.routes) ? payload.routes : [];
+
+      type TomTomRoute = Record<string, unknown> & {
+        routeType?: string;
+        summary?: Record<string, unknown>;
+        guidance?: Record<string, unknown>;
+        legs?: Array<{ points?: Array<{ latitude?: number; longitude?: number }> }>;
+      };
+
+      const normalized: RouteData[] = tomRoutes.map((r: TomTomRoute, i: number) => {
+        const pts: Array<[number, number]> = [];
+        try {
+          for (const leg of r.legs || []) {
+            if (Array.isArray(leg.points)) {
+              for (const p of leg.points) {
+                if (p && typeof p.latitude === "number" && typeof p.longitude === "number") {
+                  pts.push([p.latitude, p.longitude]);
+                }
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+        return {
+          id: `route-${i}`,
+          routeType: r.routeType || (i === 0 ? "Fastest" : `Alternative ${i}`),
+          summary: r.summary || {},
+          guidance: r.guidance || {},
+          points: pts,
+          raw: r,
+        };
+      });
+
+      setRoutes(normalized);
+      if (normalized.length > 0) {
+        setSelectedRouteId(normalized[0].id);
+      }
+    } catch (err) {
+      console.error("routes error", err);
+      alert("Failed to calculate routes. Please try again.");
+    } finally {
+      setRoutesLoading(false);
+    }
+  };
+
+  const handleStartNavigation = (routeId: string) => {
+    const route = routes.find((r) => r.id === routeId);
+    if (!route) return;
+
+    if (route.guidance?.instructions && route.guidance.instructions.length > 0) {
+      setShowRouteDetails(true);
+      setActiveTab("directions");
+    } else {
+      alert("Turn-by-turn directions not available for this route");
+    }
+  };
+
+  const selectedRoute = selectedRouteId ? routes.find((r) => r.id === selectedRouteId) : null;
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Maps — Incidents</h1>
-
-      {!process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN && (
-        <div className="mb-4 p-3 rounded border bg-yellow-50 text-yellow-800">Set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to enable Mapbox maps and search.</div>
-      )}
-
-      <div className="mb-4">
-        <div className="relative flex gap-2">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Search place or address"
-            className="flex-1 px-3 py-2 border rounded"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded={suggestions.length > 0}
-            aria-controls="maps-suggestions-list"
-            aria-activedescendant={activeIndex >= 0 ? `suggest-${activeIndex}` : undefined}
-          />
-          <button className="px-4 py-2 bg-slate-800 text-white rounded" onClick={() => void doSearch(query)}>Search</button>
-
-          {suggestions.length > 0 && (
-            <ul id="maps-suggestions-list" className="absolute left-0 right-0 top-full mt-1 bg-white border rounded shadow z-50 max-h-60 overflow-auto">
-              {suggestions.map((s, idx) => (
-                <li
-                  id={`suggest-${idx}`}
-                  key={s.id}
-                  className={`px-3 py-2 cursor-pointer hover:bg-slate-100 ${idx === activeIndex ? "bg-slate-100" : ""}`}
-                  onMouseDown={(e) => {
-                    // prevent blur before click
-                    e.preventDefault()
-                    handleSelect(s)
-                  }}
-                >
-                  <div className="font-medium">{s.name}</div>
-                  {s.address && <div className="text-sm text-slate-600">{s.address}</div>}
-                </li>
-              ))}
-            </ul>
-          )}
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-4xl font-bold mb-2">Urban Pulse Maps</h1>
+          <p className="text-muted-foreground">Navigate the city with real-time traffic and incident information</p>
         </div>
-        {isSuggestLoading && <div className="text-sm text-slate-500 mt-1">Searching…</div>}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="search">Search</TabsTrigger>
+                <TabsTrigger value="routes">Routes</TabsTrigger>
+                <TabsTrigger value="directions">Directions</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="search" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPinIcon className="h-5 w-5" />
+                      Destination
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <LocationSearch
+                      value={query}
+                      onChange={setQuery}
+                      onSelect={handleSelectLocation}
+                      onSearch={handleSearch}
+                      suggestions={suggestions}
+                      loading={isSuggestLoading}
+                      placeholder="Where do you want to go?"
+                      showCurrentLocation
+                      onCurrentLocation={handleCurrentLocation}
+                    />
+
+                    {origin && (
+                      <Alert>
+                        <MapPinIcon className="h-4 w-4" />
+                        <AlertDescription>
+                          <div className="flex items-center justify-between">
+                            <span>Origin: {origin.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setOrigin(null)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {destination && (
+                      <div className="space-y-3">
+                        <Alert className="bg-primary/5">
+                          <MapPinIcon className="h-4 w-4" />
+                          <AlertDescription>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-semibold">{destination.name}</div>
+                                {destination.address && (
+                                  <div className="text-xs text-muted-foreground mt-1">{destination.address}</div>
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setDestination(null);
+                                  setQuery("");
+                                  setRoutes([]);
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </AlertDescription>
+                        </Alert>
+
+                        <Button className="w-full" size="lg" onClick={calculateRoutes} disabled={routesLoading}>
+                          <RouteIcon className="h-4 w-4 mr-2" />
+                          {routesLoading ? "Calculating..." : "Find Routes"}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Incidents</span>
+                      <Badge variant="secondary">{incidents.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="text-center py-4">Loading incidents...</div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        {incidents.length} active incidents shown on map
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="routes" className="mt-4">
+                <RoutePanel
+                  routes={routes}
+                  selectedRouteId={selectedRouteId}
+                  onSelectRoute={setSelectedRouteId}
+                  onStartNavigation={handleStartNavigation}
+                  loading={routesLoading}
+                />
+              </TabsContent>
+
+              <TabsContent value="directions" className="mt-4">
+                {showRouteDetails && selectedRoute ? (
+                  <RouteDetails route={selectedRoute} onClose={() => setShowRouteDetails(false)} />
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <RouteIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-muted-foreground">
+                        Select a route and start navigation to see turn-by-turn directions
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <div className="lg:col-span-2">
+            <Card className="overflow-hidden">
+              <MapView
+                incidents={incidents}
+                center={center}
+                routes={routes}
+                selectedRouteId={selectedRouteId}
+                onSelectRoute={setSelectedRouteId}
+                className="h-[600px] lg:h-[calc(100vh-200px)] w-full"
+              />
+            </Card>
+          </div>
+        </div>
       </div>
-
-      <div className="mb-4">{loading ? <div>Loading incidents…</div> : <div>{incidents.length} incidents</div>}</div>
-
-      {selectedSuggestion && (
-        <div className="mb-4 p-3 border rounded bg-white shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-semibold">Selected: {selectedSuggestion.name}</div>
-              {selectedSuggestion.address && <div className="text-sm text-slate-600">{selectedSuggestion.address}</div>}
-            </div>
-            <div className="flex gap-2">
-              <button
-                className="px-3 py-1 bg-slate-800 text-white rounded"
-                onClick={async () => {
-                  // calculate routes from user's current location (if available) to selectedSuggestion
-                  setRoutesLoading(true)
-                  try {
-                    const getCurrent = () => new Promise<GeolocationPosition | null>((resolve) => {
-                      if (!navigator.geolocation) return resolve(null)
-                      navigator.geolocation.getCurrentPosition((pos) => resolve(pos), () => resolve(null), { timeout: 5000 })
-                    })
-                    const pos = await getCurrent()
-                    let origLat: number | undefined
-                    let origLon: number | undefined
-                    if (pos) {
-                      origLat = pos.coords.latitude
-                      origLon = pos.coords.longitude
-                    } else if (center) {
-                      origLat = center[0]
-                      origLon = center[1]
-                    } else if (incidents.length) {
-                      origLat = incidents[0].lat
-                      origLon = incidents[0].lon
-                    }
-
-                    if (!origLat || !origLon) throw new Error("No origin available")
-
-                    const destLat = selectedSuggestion.lat
-                    const destLon = selectedSuggestion.lon
-                    const url = `/api/tomtom-route?origLat=${origLat}&origLon=${origLon}&destLat=${destLat}&destLon=${destLon}&maxAlternatives=2&routeRepresentation=polyline&computeTravelTimeFor=all`
-                    const res = await fetch(url)
-                    const json = await res.json()
-                    if (!json?.ok) throw new Error(json?.error || "TomTom error")
-                    const payload = json.data || {}
-                    const tomRoutes = Array.isArray(payload.routes) ? payload.routes : []
-
-                    // flatten legs to points and create ids
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const normalized = tomRoutes.map((r: any, i: number) => {
-                      const pts: Array<[number, number]> = []
-                      try {
-                        for (const leg of (r.legs || [])) {
-                          if (Array.isArray(leg.points)) {
-                            for (const p of leg.points) {
-                              if (p && typeof p.latitude === "number" && typeof p.longitude === "number") pts.push([p.latitude, p.longitude])
-                            }
-                          }
-                        }
-                      } catch {
-                        // ignore
-                      }
-                      return {
-                        id: `route-${i}`,
-                        originalIndex: i,
-                        summary: r.summary || {},
-                        routeType: r.routeType || undefined,
-                        legs: r.legs || [],
-                        points: pts,
-                        raw: r,
-                      }
-                    })
-                    setRoutes(normalized)
-                    setSelectedRouteId(null)
-                  } catch (err) {
-                    console.error("routes error", err)
-                  } finally {
-                    setRoutesLoading(false)
-                  }
-                }}
-              >
-                View Routes
-              </button>
-              <button className="px-3 py-1 border rounded" onClick={() => { setSelectedSuggestion(null); setSuggestions([]); setQuery("") }}>Clear</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <MapView incidents={incidents} center={center} routes={routes} selectedRouteId={selectedRouteId} onSelectRoute={(id) => setSelectedRouteId(id)} />
-
-      {routesLoading && <div className="mt-3">Calculating routes…</div>}
-
-      {routes.length > 0 && (
-        <div className="mt-4 bg-white p-3 rounded border shadow-sm">
-          <h2 className="font-semibold mb-2">Routes</h2>
-          <div className="flex flex-col gap-2">
-            {routes.map((r) => (
-              <div key={r.id} className="p-2 border rounded flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{r.routeType ?? "Route"} — {(r.summary?.lengthInMeters ?? 0) / 1000.0 >= 1 ? `${((r.summary?.lengthInMeters ?? 0)/1000).toFixed(1)} km` : `${Math.round(r.summary?.lengthInMeters ?? 0)} m`}</div>
-                  <div className="text-sm text-slate-600">ETA: {Math.round((r.summary?.travelTimeInSeconds ?? 0) / 60)} min · Delay: {r.summary?.trafficDelayInSeconds ?? 0}s</div>
-                </div>
-                <div className="flex gap-2">
-                  <button className="px-2 py-1 bg-slate-800 text-white rounded" onClick={() => setSelectedRouteId(r.id)}>Show</button>
-                  <button className="px-2 py-1 border rounded" onClick={() => setSelectedRouteId(r.id)}>Zoom</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
-  )
+  );
 }

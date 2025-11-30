@@ -130,7 +130,6 @@
     @apply bg-[hsl(var(--background))];
     @apply text-[hsl(var(--foreground))];
     @apply selection:bg-[hsl(var(--primary))]/30;
-    @apply selection:text-white;
     @apply font-sans;
     @apply antialiased;
   }

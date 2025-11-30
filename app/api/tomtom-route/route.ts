@@ -74,7 +74,6 @@ export async function GET(request: Request) {
       "language",
       "departAt",
       "arriveAt",
-      "routeRepresentation",
       "coordinatePrecision",
     ]
 
