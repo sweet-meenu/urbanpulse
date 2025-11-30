@@ -10,6 +10,7 @@ import {
   updateDoc,
   getDoc,
   deleteDoc,
+  increment,
 } from "firebase/firestore"
 import { auth } from "./firebase"
 
@@ -36,6 +37,105 @@ export interface Simulation {
   createdAt: Date
   updatedAt: Date
   status: "active" | "completed" | "archived"
+}
+
+export interface Incident {
+  id: string
+  userId: string
+  type: "Medical" | "Fire" | "Accident" | "Violence" | "Other"
+  description: string
+  images: string[]
+  location: {
+    name: string
+    lat: number
+    lon: number
+  }
+  pulses: number
+  createdAt: Date
+  updatedAt: Date
+}
+
+// Create a new incident report (expects image URLs or base64 strings in images[])
+export async function createIncident(incidentData: Omit<Incident, "id" | "userId" | "createdAt" | "updatedAt" | "pulses">) {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error("User not authenticated")
+
+    const db = getDb()
+    const docRef = await addDoc(collection(db, "incidents"), {
+      ...incidentData,
+      userId: user.uid,
+      pulses: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    return docRef.id
+  } catch (error) {
+    console.error("Error creating incident:", error)
+    throw error
+  }
+}
+
+// Get incidents reported by current user
+export async function getUserIncidents() {
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error("User not authenticated")
+
+    const db = getDb()
+    const q = query(collection(db, "incidents"), where("userId", "==", user.uid), orderBy("createdAt", "desc"))
+    const snapshot = await getDocs(q)
+    const incidents: Incident[] = []
+    snapshot.forEach((d) => {
+      const data = d.data()
+      incidents.push({
+        id: d.id,
+        ...data,
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate(),
+      } as Incident)
+    })
+    return incidents
+  } catch (error) {
+    console.error("Error fetching user incidents:", error)
+    throw error
+  }
+}
+
+// Get all incidents (for community/global view)
+export async function getAllIncidents() {
+  try {
+    const db = getDb()
+    const q = query(collection(db, "incidents"), orderBy("createdAt", "desc"))
+    const snapshot = await getDocs(q)
+    const incidents: Incident[] = []
+    snapshot.forEach((d) => {
+      const data = d.data()
+      incidents.push({
+        id: d.id,
+        ...data,
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate(),
+      } as Incident)
+    })
+    return incidents
+  } catch (error) {
+    console.error("Error fetching all incidents:", error)
+    throw error
+  }
+}
+
+// Increment pulses (approvals) for an incident
+export async function pulseIncident(incidentId: string) {
+  try {
+    const db = getDb()
+    const docRef = doc(db, "incidents", incidentId)
+    await updateDoc(docRef, { pulses: increment(1), updatedAt: new Date() })
+  } catch (error) {
+    console.error("Error pulsing incident:", error)
+    throw error
+  }
 }
 
 // Create a new simulation

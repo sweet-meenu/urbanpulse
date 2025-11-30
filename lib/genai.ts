@@ -25,11 +25,24 @@ export async function getLlmInsights(prompt: string): Promise<Insight[]> {
   console.debug('[LLM] generating insights with model', model)
 
   if (apiKey) {
+    // Only attempt to call the official SDK from a server environment.
+    // The @google/genai SDK intentionally requires secrets when used in-browser
+    // and will throw if used without proper credentials. To avoid exposing
+    // keys or causing runtime errors in client bundles, ensure we are
+    // running server-side (no `window`) before importing the SDK.
+    if (typeof window !== "undefined") {
+      console.warn('[LLM] Gemini SDK disabled in browser environment; falling back to local heuristic')
+      return fallbackInsights(prompt)
+    }
+
     try {
       // Dynamically import the Google GenAI SDK (optional dependency).
       // The import is optional so this module can run even if @google/genai is not installed.
-  const { GoogleGenAI } = await import('@google/genai')
+      const { GoogleGenAI } = await import('@google/genai')
+
       // constructor types may not be available at compile time
+      // When running on the server the SDK will pick up credentials from
+      // environment variables, metadata server, or the provided key.
       const ai = new GoogleGenAI({})
 
       const modelId = process.env.GEMINI_MODEL || model
@@ -38,7 +51,7 @@ export async function getLlmInsights(prompt: string): Promise<Insight[]> {
       const response = await ai.models.generateContent({ model: modelId, contents: prompt })
 
       // The SDK shape can vary; try common locations for the textual output
-  const rawText = response?.text || (Array.isArray(response?.candidates) && response?.candidates[0]?.content) || JSON.stringify(response)
+      const rawText = response?.text || (Array.isArray(response?.candidates) && response?.candidates[0]?.content) || JSON.stringify(response)
       const raw = typeof rawText === 'string' ? rawText : JSON.stringify(rawText)
 
       // Try to extract JSON substring if model wrapped it in markdown

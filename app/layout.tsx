@@ -2,6 +2,8 @@
 
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+// leaflet css for controls
+import "leaflet/dist/leaflet.css";
 import { ReactLenis } from "lenis/react";
 import { ThemeProvider } from "next-themes";
 import { ScrollProgress } from "@/components/ui/scroll-progress";

@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useAuth } from "@/context/AuthContext"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { motion } from "framer-motion"
@@ -584,22 +585,22 @@ export default function DashboardPage() {
   ]
 
   const dockItems = [
-    { title: "Home", icon: <IconHome className="h-full w-full text-neutral-500 dark:text-neutral-300" />, href: "#" },
-    { title: "Map", icon: <IconMap className="h-full w-full text-neutral-500 dark:text-neutral-300" />, href: "#" },
+    { title: "Home", icon: <IconHome className="h-full w-full text-neutral-500 dark:text-neutral-300" />, href: "/" },
+  { title: "Map", icon: <IconMap className="h-full w-full text-neutral-500 dark:text-neutral-300" />, href: "/maps" },
     {
       title: "Simulations",
       icon: <IconTerminal2 className="h-full w-full text-neutral-500 dark:text-neutral-300" />,
-      href: "#",
+      href: "/simulations",
     },
     {
       title: "Community",
       icon: <IconNewSection className="h-full w-full text-neutral-500 dark:text-neutral-300" />,
-      href: "#",
+      href: "/community",
     },
     {
       title: "Profile",
       icon: <IconUser className="h-full w-full text-neutral-500 dark:text-neutral-300" />,
-      href: "#",
+      href: "/profile",
     },
     { title: "Logout", icon: <IconLogout className="h-full w-full text-red-500" />, href: "#", onClick: handleSignOut },
   ]
@@ -885,6 +886,17 @@ export default function DashboardPage() {
               <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(hsl(var(--primary))_1px,transparent_1px)] [background-size:16px_16px]" />
               </div>
+            </div>
+          </div>
+
+          {/* Incidents quick actions */}
+          <div className="bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] p-6 rounded-3xl shadow-lg">
+            <h3 className="text-lg font-bold text-[hsl(var(--foreground))] mb-4">Incidents & Reports</h3>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Report an incident or view reports from the community.</p>
+            <div className="flex gap-3">
+              <Link href="/incidents" className="px-4 py-2 rounded-md bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold">Report Incident</Link>
+              <Link href="/incidents" className="px-4 py-2 rounded-md border border-[hsl(var(--border))]">My Reports</Link>
+              <Link href="/community" className="px-4 py-2 rounded-md border border-[hsl(var(--border))]">Community</Link>
             </div>
           </div>
 
