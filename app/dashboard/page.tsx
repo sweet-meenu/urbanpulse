@@ -36,8 +36,8 @@ import BentoGridDemo, {
 } from "@/components/bento-grid-demo"
 import { getLlmInsights, type Insight } from "@/lib/genai"
 
-// Dummy Logo - Matches Theme Text Color
-const urbanPulseLogo = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 50' fill='none'%3E%3Ctext x='10' y='35' fontFamily='Arial' fontWeight='bold' fontSize='24' fill='currentColor'%3EUrban%3Ctspan fill='%2300E676'%3EPulse%3C/tspan%3E%3C/text%3E%3C/svg%3E`
+// White thick text logo for navigation bar
+const urbanPulseLogo = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 280 60' fill='none'%3E%3Ctext x='10' y='45' fontFamily='Arial, sans-serif' fontWeight='900' fontSize='42' fill='white' letterSpacing='2'%3EUrbanPulse%3C/text%3E%3C/svg%3E`
 
 const describeAqiCategory = (aqi?: number | null) => {
   if (aqi === null || aqi === undefined) return "Unknown"

@@ -68,6 +68,8 @@ type RouteData = {
       turnAngleInDecimalDegrees?: number;
     }>;
   };
+  aqiScore?: number;
+  aqiCategory?: string;
 };
 
 type TomTomRoute = {
@@ -319,6 +321,8 @@ export default function MapsPage() {
           summary: r.summary || {},
           points: pts,
           guidance: r.guidance || { instructions: [] },
+          aqiScore: 0,
+          aqiCategory: "Calculating...",
         };
       });
 
@@ -326,6 +330,37 @@ export default function MapsPage() {
       if (normalized.length > 0) {
         setSelectedRouteId(normalized[0].id);
       }
+
+      // Calculate AQI scores in background
+      Promise.all(
+        normalized.map(async (route, idx) => {
+          const { score, category } = await calculateAqiScore(route.points);
+          return { ...route, aqiScore: score, aqiCategory: category };
+        })
+      ).then((routesWithAqi) => {
+        // Find the route with the best (highest) AQI score
+        let bestAqiIdx = 0;
+        let bestAqiScore = routesWithAqi[0]?.aqiScore || 0;
+        
+        routesWithAqi.forEach((route, idx) => {
+          if (route.aqiScore > bestAqiScore) {
+            bestAqiScore = route.aqiScore;
+            bestAqiIdx = idx;
+          }
+        });
+
+        // Rename the greenest route
+        const updatedRoutes = routesWithAqi.map((route, idx) => {
+          if (idx === bestAqiIdx && idx !== 0) {
+            return { ...route, routeType: "Greenest" };
+          }
+          return route;
+        });
+
+        setRoutes(updatedRoutes);
+      }).catch(err => {
+        console.error("AQI scoring error:", err);
+      });
     } catch (err) {
       console.error("routes error", err);
       alert("Failed to calculate routes");
@@ -344,6 +379,76 @@ export default function MapsPage() {
     const minutes = Math.floor((seconds % 3600) / 60);
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes} min`;
+  };
+
+  const calculateAqiScore = async (points: Array<[number, number]>): Promise<{ score: number; category: string }> => {
+    if (points.length === 0) return { score: 0, category: "Unknown" };
+
+    try {
+      // Sample points along the route (every 10th point or max 10 samples)
+      const sampleInterval = Math.max(1, Math.floor(points.length / 10));
+      const samplePoints = points.filter((_, idx) => idx % sampleInterval === 0).slice(0, 10);
+
+      // Fetch AQI for each sample point
+      const aqiPromises = samplePoints.map(async ([lat, lon]) => {
+        try {
+          const params = new URLSearchParams({
+            latitude: String(lat),
+            longitude: String(lon),
+            hourly: "us_aqi",
+            timezone: "auto",
+          });
+          const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params.toString()}`);
+          if (!res.ok) return null;
+          const data = await res.json();
+          return data?.hourly?.us_aqi?.[0] ?? null;
+        } catch {
+          return null;
+        }
+      });
+
+      const aqiValues = (await Promise.all(aqiPromises)).filter((v): v is number => v !== null);
+      
+      if (aqiValues.length === 0) return { score: 0, category: "Unknown" };
+
+      // Calculate average AQI
+      const avgAqi = aqiValues.reduce((sum, val) => sum + val, 0) / aqiValues.length;
+
+      // Convert AQI (0-500 scale) to 0-10 score (inverted: lower AQI = higher score)
+      // AQI 0-50 (Good) = 9-10
+      // AQI 51-100 (Moderate) = 7-8
+      // AQI 101-150 (Unhealthy for sensitive) = 5-6
+      // AQI 151-200 (Unhealthy) = 3-4
+      // AQI 201-300 (Very Unhealthy) = 1-2
+      // AQI 301+ (Hazardous) = 0-1
+      let score: number;
+      let category: string;
+
+      if (avgAqi <= 50) {
+        score = 9 + (50 - avgAqi) / 50;
+        category = "Excellent";
+      } else if (avgAqi <= 100) {
+        score = 7 + (100 - avgAqi) / 25;
+        category = "Good";
+      } else if (avgAqi <= 150) {
+        score = 5 + (150 - avgAqi) / 25;
+        category = "Moderate";
+      } else if (avgAqi <= 200) {
+        score = 3 + (200 - avgAqi) / 25;
+        category = "Poor";
+      } else if (avgAqi <= 300) {
+        score = 1 + (300 - avgAqi) / 50;
+        category = "Very Poor";
+      } else {
+        score = Math.max(0, 1 - (avgAqi - 300) / 200);
+        category = "Hazardous";
+      }
+
+      return { score: Math.round(score * 10) / 10, category };
+    } catch (error) {
+      console.error("AQI calculation error:", error);
+      return { score: 0, category: "Unknown" };
+    }
   };
 
   const getRouteIcon = (type?: string) => {
@@ -608,6 +713,30 @@ export default function MapsPage() {
                                     <div className="font-bold text-sm text-purple-700 dark:text-purple-300">
                                       {formatDistance(summary.lengthInMeters || 0)}
                                     </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* AQI Score */}
+                              <div className="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200/50 dark:border-green-700/30">
+                                <div className="flex-1">
+                                  <div className="text-xs text-green-600/70 dark:text-green-400/70 mb-1">Air Quality Score</div>
+                                  <div className="flex items-center justify-between">
+                                    <div className="font-bold text-lg text-green-700 dark:text-green-300">
+                                      {route.aqiScore ? `${route.aqiScore}/10` : "—"}
+                                    </div>
+                                    <Badge 
+                                      variant="secondary" 
+                                      className={`text-xs ${
+                                        route.aqiCategory === "Excellent" || route.aqiCategory === "Good"
+                                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                          : route.aqiCategory === "Moderate"
+                                          ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                      }`}
+                                    >
+                                      {route.aqiCategory || "Calculating..."}
+                                    </Badge>
                                   </div>
                                 </div>
                               </div>

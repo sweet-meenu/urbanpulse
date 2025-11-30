@@ -8,7 +8,6 @@ import { useAuth } from "@/context/AuthContext";
 
 
 import { Globe } from "@/components/ui/globe";
-import { Highlighter } from "@/components/ui/highlighter";
 import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
 import { Iphone } from "@/components/ui/iphone";
 import { BorderBeam } from "@/components/ui/border-beam";
@@ -76,7 +75,7 @@ const Hero = () => {
           transition={{ duration: 0.8, delay: 0.1 }}
           className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-bold font-space tracking-tighter leading-[0.9] text-[hsl(var(--foreground))]"
         >
-          The <Highlighter color="hsl(var(--primary))">Pulse</Highlighter> of<br />
+          The Pulse of<br />
           Your City.
         </motion.h1>
 
