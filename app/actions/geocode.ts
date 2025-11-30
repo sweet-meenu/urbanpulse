@@ -1,6 +1,15 @@
 "use server"
 
-export async function fetchAddressFromCoords(lat: number, lon: number) {
+interface TomTomAddress {
+  streetNumber?: string
+  streetName?: string
+  municipality?: string
+  localName?: string
+  countrySubdivision?: string
+  country?: string
+}
+
+export async function fetchAddressFromCoords(lat: number, lon: number): Promise<TomTomAddress> {
   const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY
 
   if (!apiKey) {
@@ -10,7 +19,9 @@ export async function fetchAddressFromCoords(lat: number, lon: number) {
   const url = `https://api.tomtom.com/search/2/reverseGeocode/${lat},${lon}.json?key=${apiKey}&radius=100`
 
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, {
+      cache: 'no-store'
+    })
 
     if (!res.ok) {
       const text = await res.text()

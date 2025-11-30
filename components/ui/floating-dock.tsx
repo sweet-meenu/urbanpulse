@@ -42,7 +42,7 @@ const FloatingDockMobile = ({
         {open && (
           <motion.div
             layoutId="nav"
-            className="absolute inset-x-0 bottom-full mb-2 flex flex-col gap-2"
+            className="absolute right-0 bottom-full mb-2 flex flex-col gap-2"
           >
             {items.map((item, idx) => (
               <motion.div
@@ -60,9 +60,9 @@ const FloatingDockMobile = ({
                   href={item.href ?? '#'}
                   key={item.title}
                   onClick={item.onClick ? (e) => { e.preventDefault(); item.onClick?.(e); } : undefined}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 dark:bg-neutral-900"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 dark:bg-neutral-900 shadow-lg"
                 >
-                  <div className="h-4 w-4">{item.icon}</div>
+                  <div className="h-5 w-5">{item.icon}</div>
                 </a>
               </motion.div>
             ))}
@@ -71,9 +71,9 @@ const FloatingDockMobile = ({
       </AnimatePresence>
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 dark:bg-neutral-800"
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 dark:bg-neutral-800 shadow-lg"
       >
-        <IconLayoutNavbarCollapse className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
+        <IconLayoutNavbarCollapse className="h-6 w-6 text-neutral-500 dark:text-neutral-400" />
       </button>
     </div>
   );
@@ -92,7 +92,7 @@ const FloatingDockDesktop = ({
       onMouseMove={(e) => mouseX.set(e.pageX)}
       onMouseLeave={() => mouseX.set(Infinity)}
       className={cn(
-        "mx-auto hidden h-16 items-end gap-4 rounded-2xl bg-gray-50 px-4 pb-3 md:flex dark:bg-neutral-900",
+        "mx-auto hidden h-14 sm:h-16 items-end gap-2 sm:gap-4 rounded-2xl bg-gray-50 px-3 sm:px-4 pb-2 sm:pb-3 md:flex dark:bg-neutral-900",
         className,
       )}
     >

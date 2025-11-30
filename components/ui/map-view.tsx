@@ -26,13 +26,80 @@ type MapViewProps = {
   }>
   selectedRouteId?: string | null
   onSelectRoute?: (id: string) => void
+  origin?: { lat: number; lon: number; name: string } | null
+  destination?: { lat: number; lon: number; name: string } | null
 }
 
-export default function MapView({ incidents = [], className = "h-[600px] w-full", center = null, routes = [], selectedRouteId = null, onSelectRoute, }: MapViewProps) {
+// Custom SVG icon for current location (blue pulsing dot)
+const createOriginIcon = () => {
+  return L.divIcon({
+    html: `
+      <div class="relative flex items-center justify-center">
+        <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-25 animate-ping"></div>
+        <div class="relative w-6 h-6 bg-blue-600 rounded-full border-4 border-white shadow-lg flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="white">
+            <circle cx="12" cy="12" r="8"/>
+          </svg>
+        </div>
+      </div>
+    `,
+    className: 'custom-origin-marker',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  })
+}
+
+// Custom SVG icon for destination (red map pin)
+const createDestinationIcon = () => {
+  return L.divIcon({
+    html: `
+      <div class="relative flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48" class="drop-shadow-lg">
+          <path d="M20 0C8.954 0 0 8.954 0 20c0 14 20 28 20 28s20-14 20-28C40 8.954 31.046 0 20 0z" fill="#EF4444"/>
+          <circle cx="20" cy="20" r="8" fill="white"/>
+          <circle cx="20" cy="20" r="5" fill="#DC2626"/>
+        </svg>
+      </div>
+    `,
+    className: 'custom-destination-marker',
+    iconSize: [40, 48],
+    iconAnchor: [20, 48],
+  })
+}
+
+// Custom SVG icon for incidents (orange warning)
+const createIncidentIcon = () => {
+  return L.divIcon({
+    html: `
+      <div class="relative flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" class="drop-shadow-md">
+          <circle cx="16" cy="16" r="14" fill="#F97316" stroke="white" stroke-width="2"/>
+          <path d="M16 10v8M16 22v2" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    `,
+    className: 'custom-incident-marker',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  })
+}
+
+export default function MapView({ 
+  incidents = [], 
+  className = "h-[600px] w-full", 
+  center = null, 
+  routes = [], 
+  selectedRouteId = null, 
+  onSelectRoute,
+  origin = null,
+  destination = null,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<L.Layer[]>([])
   const routesRef = useRef<L.Polyline[]>([])
+  const originMarkerRef = useRef<L.Marker | null>(null)
+  const destinationMarkerRef = useRef<L.Marker | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -113,7 +180,7 @@ export default function MapView({ incidents = [], className = "h-[600px] w-full"
     incidents.forEach((inc) => {
       if (!inc || typeof inc.lat !== "number" || typeof inc.lon !== "number") return
 
-      const marker = L.circleMarker([inc.lat, inc.lon], { radius: 6, color: "#ef4444", weight: 2, fillColor: "#ef4444" })
+      const marker = L.marker([inc.lat, inc.lon], { icon: createIncidentIcon() })
       marker.addTo(map)
 
       // create popup container and render a small React component into it
@@ -121,12 +188,26 @@ export default function MapView({ incidents = [], className = "h-[600px] w-full"
       popupContainer.className = "max-w-xs"
 
       const popupContent = (
-        <div className="p-2">
-          <div className="font-semibold mb-1">{inc.title ?? "Incident"}</div>
-          <div className="text-sm text-slate-600 mb-2">{inc.description ?? "No details"}</div>
-          {inc.image && <img src={inc.image} alt="incident" className="w-full rounded-md" />}
-          <div className="mt-2 flex justify-end">
-            <a href={`/incidents/${inc.id ?? ""}`} className="text-sm px-2 py-1 bg-slate-800 text-white rounded">Open</a>
+        <div className="p-3 space-y-2">
+          <div className="flex items-start gap-2">
+            <div className="w-2 h-2 mt-1.5 rounded-full bg-orange-500 shrink-0"></div>
+            <div className="flex-1">
+              <div className="font-semibold text-sm mb-1">{inc.title ?? "Incident"}</div>
+              <div className="text-xs text-slate-600">{inc.description ?? "No details"}</div>
+            </div>
+          </div>
+          {inc.image && (
+            <div className="rounded-md overflow-hidden">
+              <img src={inc.image} alt="incident" className="w-full h-32 object-cover" />
+            </div>
+          )}
+          <div className="flex justify-end pt-1">
+            <a 
+              href={`/incidents/${inc.id ?? ""}`} 
+              className="text-xs px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md transition-colors"
+            >
+              View Details
+            </a>
           </div>
         </div>
       )
@@ -140,10 +221,59 @@ export default function MapView({ incidents = [], className = "h-[600px] w-full"
         popupContainer.innerHTML = `<div><strong>${inc.title ?? "Incident"}</strong><div>${inc.description ?? ""}</div></div>`
       }
 
-      marker.bindPopup(popupContainer)
+      marker.bindPopup(popupContainer, {
+        maxWidth: 300,
+        className: 'custom-popup'
+      })
       markersRef.current.push(marker)
     })
   }, [incidents])
+
+  // update origin marker
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    // remove existing origin marker
+    if (originMarkerRef.current) {
+      originMarkerRef.current.remove()
+      originMarkerRef.current = null
+    }
+
+    if (origin) {
+      const marker = L.marker([origin.lat, origin.lon], { icon: createOriginIcon() })
+      marker.addTo(map)
+      marker.bindTooltip(origin.name || "Current Location", {
+        permanent: false,
+        direction: 'top',
+        className: 'custom-tooltip'
+      })
+      originMarkerRef.current = marker
+    }
+  }, [origin])
+
+  // update destination marker
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    // remove existing destination marker
+    if (destinationMarkerRef.current) {
+      destinationMarkerRef.current.remove()
+      destinationMarkerRef.current = null
+    }
+
+    if (destination) {
+      const marker = L.marker([destination.lat, destination.lon], { icon: createDestinationIcon() })
+      marker.addTo(map)
+      marker.bindTooltip(destination.name || "Destination", {
+        permanent: false,
+        direction: 'top',
+        className: 'custom-tooltip'
+      })
+      destinationMarkerRef.current = marker
+    }
+  }, [destination])
 
   // update routes when routes prop changes
   useEffect(() => {

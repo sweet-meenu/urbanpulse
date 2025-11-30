@@ -19,13 +19,13 @@ interface LocationOption {
   lon: number
 }
 
-const cityImages = [
-  { city: "New York", url: "/new-york-skyline.png" },
-  { city: "San Francisco", url: "/san-francisco-cityscape.jpg" },
-  { city: "Los Angeles", url: "/los-angeles-downtown.jpg" },
-  { city: "Chicago", url: "/chicago-skyline.png" },
-  { city: "Boston", url: "/boston-downtown.jpg" },
-  { city: "Seattle", url: "/seattle-cityscape.jpg" },
+const incidentIcons = [
+  { type: "Traffic Jam", icon: "🚗", color: "from-red-500 to-orange-500" },
+  { type: "Road Work", icon: "🚧", color: "from-yellow-500 to-amber-500" },
+  { type: "Accident", icon: "⚠️", color: "from-red-600 to-pink-600" },
+  { type: "Flooding", icon: "🌊", color: "from-blue-500 to-cyan-500" },
+  { type: "Pollution", icon: "🏭", color: "from-gray-500 to-slate-600" },
+  { type: "General", icon: "📍", color: "from-purple-500 to-indigo-500" },
 ]
 
 export default function NewSimulationPage() {
@@ -35,7 +35,7 @@ export default function NewSimulationPage() {
   const [step, setStep] = useState<"location" | "config">("location")
   const [simulationName, setSimulationName] = useState("")
   const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null)
-  const [selectedCity, setSelectedCity] = useState<string | null>(null)
+  const [selectedIcon, setSelectedIcon] = useState<string>("📍")
   const [locationSearch, setLocationSearch] = useState("")
   const [locationSuggestions, setLocationSuggestions] = useState<LocationOption[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -81,10 +81,6 @@ export default function NewSimulationPage() {
     setLocationSuggestions([])
   }
 
-  const handleSelectCity = (city: string) => {
-    setSelectedCity(city)
-  }
-
   const toggleOption = (option: keyof typeof includedOptions) => {
     setIncludedOptions((prev) => ({
       ...prev,
@@ -98,7 +94,7 @@ export default function NewSimulationPage() {
       return
     }
 
-    if (!selectedLocation && !selectedCity) {
+    if (!selectedLocation) {
       setError("Please select a location")
       return
     }
@@ -107,8 +103,7 @@ export default function NewSimulationPage() {
     setError("")
 
     try {
-      const location = selectedLocation || { name: selectedCity, lat: 0, lon: 0 }
-      const cityImage = cityImages.find((c) => c.city === selectedCity)?.url || ""
+      const location = selectedLocation
 
       // If we have coordinates, fetch current weather & AQI to provide context to the LLM
   let insights: Insight[] = []
@@ -161,7 +156,7 @@ export default function NewSimulationPage() {
         location: location.name ?? '',
         latitude: location.lat,
         longitude: location.lon,
-        cityImage,
+        cityImage: selectedIcon,
         includedOptions,
         status: "active",
         insights,
@@ -235,42 +230,42 @@ export default function NewSimulationPage() {
 
               <div className="space-y-2">
                 <label className="block text-lg font-semibold flex items-center gap-2">
-                  <IconMapPin size={20} className="text-[hsl(var(--primary))]" />
-                  Select City or Search Location
+                  <IconFileDescription size={20} className="text-[hsl(var(--primary))]" />
+                  Select Icon
                 </label>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {cityImages.map((city) => (
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                  {incidentIcons.map((item) => (
                     <motion.button
-                      key={city.city}
-                      onClick={() => handleSelectCity(city.city)}
+                      key={item.type}
+                      onClick={() => setSelectedIcon(item.icon)}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className={`relative h-32 rounded-lg overflow-hidden border-2 transition-all ${
-                        selectedCity === city.city
-                          ? "border-[hsl(var(--primary))] ring-2 ring-[hsl(var(--primary))]/50"
+                      className={`relative h-20 rounded-lg border-2 transition-all flex flex-col items-center justify-center gap-1 ${
+                        selectedIcon === item.icon
+                          ? "border-[hsl(var(--primary))] ring-2 ring-[hsl(var(--primary))]/50 bg-gradient-to-br " + item.color
                           : "border-[hsl(var(--border))] hover:border-[hsl(var(--primary))]"
                       }`}
                     >
-                      <img
-                        src={city.url || "/placeholder.svg"}
-                        alt={city.city}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <span className="text-white font-semibold text-center">{city.city}</span>
-                      </div>
-                      {selectedCity === city.city && (
-                        <div className="absolute top-2 right-2 bg-[hsl(var(--primary))] rounded-full p-1">
-                          <IconCheck size={16} className="text-black" />
+                      <span className="text-3xl">{item.icon}</span>
+                      <span className="text-xs font-medium">{item.type}</span>
+                      {selectedIcon === item.icon && (
+                        <div className="absolute top-1 right-1 bg-[hsl(var(--primary))] rounded-full p-0.5">
+                          <IconCheck size={12} className="text-white" />
                         </div>
                       )}
                     </motion.button>
                   ))}
                 </div>
+              </div>
 
-                <div className="mt-6 space-y-2">
-                  <p className="text-sm text-[hsl(var(--muted-foreground))]">Or search for any location:</p>
+              <div className="space-y-2">
+                <label className="block text-lg font-semibold flex items-center gap-2">
+                  <IconMapPin size={20} className="text-[hsl(var(--primary))]" />
+                  Search Location
+                </label>
+
+                <div className="space-y-2">
+                  <p className="text-sm text-[hsl(var(--muted-foreground))]">Search for any location:</p>
                   <div className="relative">
                     <Input
                       placeholder="Search location..."
@@ -314,7 +309,7 @@ export default function NewSimulationPage() {
 
               <Button
                 onClick={() => setStep("config")}
-                disabled={!simulationName.trim() || (!selectedLocation && !selectedCity)}
+                disabled={!simulationName.trim() || !selectedLocation}
                 className="w-full"
               >
                 Next: Configure Options

@@ -90,20 +90,20 @@ const BentoGridDemo = ({
     : "waiting for GPS";
 
   return (
-    <div className={cn("space-y-8", className)}>
+    <div className={cn("space-y-6 sm:space-y-8", className)}>
       <div className="flex flex-col gap-2">
-        <p className="text-sm uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">
+        <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">
           Urban Pulse Insights
         </p>
-        <h3 className="text-3xl font-semibold text-[hsl(var(--foreground))]">
+        <h3 className="text-2xl sm:text-3xl font-semibold text-[hsl(var(--foreground))]">
           Live climate & air-quality intelligence
         </h3>
-        <p className="text-[hsl(var(--muted-foreground))]">
+        <p className="text-sm sm:text-base text-[hsl(var(--muted-foreground))]">
           Powered by Open-Meteo & HeroUI components tailored for your current GPS location.
         </p>
       </div>
 
-  <BentoGrid className="grid-cols-1 gap-6 md:grid-cols-3">
+  <BentoGrid className="grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
         <BentoCard
           name="Live Climate Snapshot"
           description="Auto-refreshes every time we lock your location."
@@ -112,42 +112,42 @@ const BentoGridDemo = ({
           hideHeader
           hideCta
           background={
-            <div className="relative flex h-full flex-col gap-6 rounded-[28px] bg-gradient-to-br from-emerald-500/20 via-slate-900/40 to-sky-600/10 p-6 text-left text-white">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative flex h-full flex-col gap-4 sm:gap-6 rounded-[20px] sm:rounded-[28px] bg-gradient-to-br from-emerald-500/20 via-slate-900/40 to-sky-600/10 p-4 sm:p-6 text-left text-white">
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-white/60">Live status</p>
-                  <h4 className="text-2xl font-semibold">Live Climate Snapshot</h4>
+                  <h4 className="text-xl sm:text-2xl font-semibold">Live Climate Snapshot</h4>
                 </div>
-                <span className="rounded-full border border-white/20 px-3 py-1 text-xs font-semibold text-white/80">
+                <span className="rounded-full border border-white/20 px-2 sm:px-3 py-1 text-xs font-semibold text-white/80">
                   {weatherSummary ? "Stream connected" : "Awaiting GPS"}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {[{ label: "Temperature", value: formatValue(weatherSummary?.temperature, "°C") },
                   { label: "Humidity", value: formatValue(weatherSummary?.humidity, "%") },
                   { label: "Wind", value: formatValue(weatherSummary?.windSpeed, " km/h") },
                   { label: "Pressure", value: formatValue(weatherSummary?.pressure, " hPa") }].map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+                    className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 backdrop-blur-sm"
                   >
                     <p className="text-xs uppercase tracking-[0.3em] text-white/60">{stat.label}</p>
-                    <p className="text-4xl font-semibold">{stat.value}</p>
+                    <p className="text-2xl sm:text-3xl md:text-4xl font-semibold">{stat.value}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/80">
+              <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-black/40 p-3 sm:p-4 text-xs sm:text-sm text-white/80">
                 <p>{weatherSummary ? "Open-Meteo feed synced with your last location." : "Enable location to unlock live stats."}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full bg-white/10 px-3 py-1">Updated {updatedAtLabel}</span>
+                <div className="mt-2 sm:mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full bg-white/10 px-2 sm:px-3 py-1">Updated {updatedAtLabel}</span>
                   {onRefresh && (
                     <button
                       type="button"
                       onClick={onRefresh}
                       disabled={isLoading}
-                      className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-1 sm:gap-2 rounded-full bg-white/10 px-2 sm:px-3 py-1 text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <IconRefresh className="h-4 w-4" />
                       Refresh
@@ -157,7 +157,7 @@ const BentoGridDemo = ({
               </div>
 
               {isLoading && (
-                <div className="absolute inset-0 rounded-[28px] bg-black/40 backdrop-blur-sm flex items-center justify-center text-sm font-medium">
+                <div className="absolute inset-0 rounded-[20px] sm:rounded-[28px] bg-black/40 backdrop-blur-sm flex items-center justify-center text-xs sm:text-sm font-medium">
                   Syncing latest data…
                 </div>
               )}
@@ -173,15 +173,15 @@ const BentoGridDemo = ({
           hideHeader
           hideCta
           background={
-            <div className="flex h-full flex-col gap-5 rounded-[28px] bg-gradient-to-b from-emerald-500/20 via-lime-500/10 to-slate-900/40 p-6 text-white">
+            <div className="flex h-full flex-col gap-4 sm:gap-5 rounded-[20px] sm:rounded-[28px] bg-gradient-to-b from-emerald-500/20 via-lime-500/10 to-slate-900/40 p-4 sm:p-6 text-white">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-white/60">US AQI</p>
-                  <h4 className="text-3xl font-bold">Air Quality</h4>
+                  <h4 className="text-2xl sm:text-3xl font-bold">Air Quality</h4>
                 </div>
                 <span
                   className={cn(
-                    "rounded-full px-3 py-1 text-xs font-semibold",
+                    "rounded-full px-2 sm:px-3 py-1 text-xs font-semibold",
                     getAqiBadgeColor(airQualitySummary?.aqi)
                   )}
                 >
@@ -190,22 +190,22 @@ const BentoGridDemo = ({
               </div>
 
               <div>
-                <p className="text-6xl font-black leading-none">
+                <p className="text-4xl sm:text-5xl md:text-6xl font-black leading-none">
                   {airQualitySummary?.aqi ?? "—"}
-                  <span className="ml-2 text-base font-medium text-white/70">/ 500</span>
+                  <span className="ml-2 text-sm sm:text-base font-medium text-white/70">/ 500</span>
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-sm text-white/80">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-sm text-white/80">
+                <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-2 sm:p-3">
                   <p className="text-xs uppercase tracking-[0.3em] text-white/50">PM2.5</p>
-                  <p className="text-2xl font-semibold">
+                  <p className="text-xl sm:text-2xl font-semibold">
                     {formatValue(airQualitySummary?.pm25, " μg/m³", 0)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-2 sm:p-3">
                   <p className="text-xs uppercase tracking-[0.3em] text-white/50">PM10</p>
-                  <p className="text-2xl font-semibold">
+                  <p className="text-xl sm:text-2xl font-semibold">
                     {formatValue(airQualitySummary?.pm10, " μg/m³", 0)}
                   </p>
                 </div>
@@ -223,11 +223,11 @@ const BentoGridDemo = ({
           hideHeader
           hideCta
           background={
-            <div className="grid h-full grid-cols-1 gap-6 rounded-[28px] bg-slate-900/50 p-6 text-white md:grid-cols-[1.05fr,0.95fr]">
-              <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+            <div className="grid h-full grid-cols-1 gap-4 sm:gap-6 rounded-[20px] sm:rounded-[28px] bg-slate-900/50 p-4 sm:p-6 text-white md:grid-cols-[1.05fr,0.95fr]">
+              <div className="flex flex-col gap-3 sm:gap-4 rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-3 sm:p-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-white/60">Planner</p>
-                  <h4 className="text-xl font-semibold">Forecast date</h4>
+                  <h4 className="text-lg sm:text-xl font-semibold">Forecast date</h4>
                 </div>
                 <DatePicker
                   variant="bordered"
@@ -254,33 +254,33 @@ const BentoGridDemo = ({
                 <Button
                   type="button"
                   variant="secondary"
-                  className="w-full"
+                  className="w-full text-sm sm:text-base"
                   onClick={onViewPredictions}
                 >
                   View Data & Predictions
                 </Button>
               </div>
-              <div className="flex flex-col gap-3 overflow-auto rounded-3xl border border-white/10 bg-white/5 p-4 min-h-[220px]">
+              <div className="flex flex-col gap-2 sm:gap-3 overflow-auto rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-3 sm:p-4 min-h-[200px] sm:min-h-[220px]">
                 <p className="text-xs uppercase tracking-[0.3em] text-white/60">
                   Selected day snapshot
                 </p>
                 {preview.length === 0 ? (
-                  <p className="text-white/70 text-sm">
+                  <p className="text-white/70 text-xs sm:text-sm">
                     No Open-Meteo forecast for this date yet. Try another day.
                   </p>
                 ) : (
                   preview.map((entry) => (
                     <div
                       key={entry.iso}
-                      className="flex items-center justify-between rounded-2xl border border-white/5 bg-black/30 px-4 py-3"
+                      className="flex items-center justify-between rounded-xl sm:rounded-2xl border border-white/5 bg-black/30 px-3 sm:px-4 py-2 sm:py-3"
                     >
                       <div>
-                        <p className="text-sm font-semibold text-white">{entry.timeLabel}</p>
+                        <p className="text-xs sm:text-sm font-semibold text-white">{entry.timeLabel}</p>
                         <p className="text-xs text-white/60">
                           {formatValue(entry.humidity, "%", 0)} humidity • {formatValue(entry.windSpeed, " km/h")} wind
                         </p>
                       </div>
-                      <div className="text-2xl font-bold text-white">
+                      <div className="text-xl sm:text-2xl font-bold text-white">
                         {formatValue(entry.temperature, "°C")}
                       </div>
                     </div>
@@ -299,22 +299,22 @@ const BentoGridDemo = ({
           hideHeader
           hideCta
           background={
-            <div className="flex h-full flex-col gap-4 rounded-[28px] bg-gradient-to-br from-indigo-500/20 via-slate-900/60 to-purple-700/20 p-6 text-white">
+            <div className="flex h-full flex-col gap-3 sm:gap-4 rounded-[20px] sm:rounded-[28px] bg-gradient-to-br from-indigo-500/20 via-slate-900/60 to-purple-700/20 p-4 sm:p-6 text-white">
               <div>
                 <p className="text-xs uppercase tracking-[0.4em] text-white/60">Key takeaways</p>
-                <h4 className="text-2xl font-semibold">Micro-insights</h4>
+                <h4 className="text-xl sm:text-2xl font-semibold">Micro-insights</h4>
               </div>
-              <ul className="space-y-4 text-sm text-white/80">
+              <ul className="space-y-3 sm:space-y-4 text-xs sm:text-sm text-white/80">
                 <li className="flex items-start gap-2">
-                  <IconCloud className="mt-0.5 h-4 w-4 text-sky-300" />
+                  <IconCloud className="mt-0.5 h-4 w-4 flex-shrink-0 text-sky-300" />
                   <span>Expect smoother traffic around the lowest wind windows highlighted above.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <IconDroplet className="mt-0.5 h-4 w-4 text-emerald-300" />
+                  <IconDroplet className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
                   <span>Humidity spikes above 80% trigger pedestrian safety notifications.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <IconWind className="mt-0.5 h-4 w-4 text-cyan-300" />
+                  <IconWind className="mt-0.5 h-4 w-4 flex-shrink-0 text-cyan-300" />
                   <span>Schedule drone deliveries under 20 km/h gusts only.</span>
                 </li>
               </ul>

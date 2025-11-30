@@ -24,7 +24,9 @@ export async function searchLocationsAction(query: string): Promise<LocationSugg
       language: "en-US",
     })
 
-    const response = await fetch(`${TOMTOM_BASE_URL}/search/${query}.json?${params}`)
+    const response = await fetch(`${TOMTOM_BASE_URL}/search/${query}.json?${params}`, {
+      cache: 'no-store'
+    })
 
     if (!response.ok) {
       console.error("TomTom API error:", response.statusText)

@@ -45,29 +45,29 @@ export default function CommunityPage() {
     .sort((a, b) => (a.distance ?? 9999) - (b.distance ?? 9999))
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Community Incidents</h1>
+    <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Community Incidents</h1>
       {!incidents ? (
-        <div>Loading...</div>
+        <div className="text-sm sm:text-base">Loading...</div>
       ) : (
         <div className="space-y-4">
           {sorted.map((r: any) => (
-            <div key={r.id} className="p-4 border rounded-lg flex gap-4 items-start">
-              <div className="w-20 h-20 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
-                {r.images?.[0] ? <img src={r.images[0]} alt="thumb" className="w-full h-full object-cover" /> : <div className="text-sm text-muted">No image</div>}
+            <div key={r.id} className="p-3 sm:p-4 border rounded-lg flex flex-col sm:flex-row gap-3 sm:gap-4 items-start">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded overflow-hidden flex items-center justify-center flex-shrink-0">
+                {r.images?.[0] ? <img src={r.images[0]} alt="thumb" className="w-full h-full object-cover" /> : <div className="text-xs sm:text-sm text-muted">No image</div>}
               </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="text-sm text-muted">{r.type}</div>
-                    <div className="font-medium">{r.description}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs sm:text-sm text-muted">{r.type}</div>
+                    <div className="font-medium text-sm sm:text-base">{r.description}</div>
                   </div>
-                  <div className="text-right">
+                  <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-0">
                     <div className="flex items-center gap-2">
-                      <IconHeartbeat className="w-5 h-5 text-red-500" />
-                      <div>{r.pulses ?? 0}</div>
+                      <IconHeartbeat className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                      <div className="text-sm sm:text-base">{r.pulses ?? 0}</div>
                     </div>
-                    <button onClick={() => handlePulse(r.id)} className="mt-2 px-3 py-1 rounded border">Pulse</button>
+                    <button onClick={() => handlePulse(r.id)} className="px-3 py-1 rounded border text-sm">Pulse</button>
                   </div>
                 </div>
                 <div className="text-xs text-[hsl(var(--muted-foreground))] mt-2">{r.location?.name} {r.distance !== null && r.distance !== undefined ? `· ${r.distance.toFixed(1)} km` : ''}</div>

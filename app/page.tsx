@@ -28,20 +28,20 @@ const Hero = () => {
 
     const { user } = useAuth();
     return (
-    <section className="relative min-h-[120vh] w-full flex flex-col items-center pt-32 px-4 pb-20 overflow-hidden">
+    <section className="relative min-h-[100vh] w-full flex flex-col items-center pt-20 sm:pt-32 px-4 pb-20 overflow-hidden">
       <div className="absolute inset-x-0 top-40 h-[100vh] z-0 opacity-40 pointer-events-none">
         <Globe />
       </div>
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[hsl(var(--background))]/60 to-[hsl(var(--background))] z-0" />
 
-      <nav className="fixed top-6 inset-x-0 mx-auto max-w-5xl h-16 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))]/80 backdrop-blur-md z-50 flex justify-between items-center px-6 shadow-2xl">
+      <nav className="fixed top-4 sm:top-6 inset-x-4 sm:inset-x-0 mx-auto max-w-5xl h-14 sm:h-16 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))]/80 backdrop-blur-md z-50 flex justify-between items-center px-4 sm:px-6 shadow-2xl">
         <Link href="/" className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-full bg-[hsl(var(--primary))]" />
-          <span className="text-xl font-bold font-space tracking-tight text-[hsl(var(--foreground))]">
+          <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-[hsl(var(--primary))]" />
+          <span className="text-lg sm:text-xl font-bold font-space tracking-tight text-[hsl(var(--foreground))]">
             UrbanPulse
           </span>
         </Link>
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-2 sm:gap-4 items-center">
           {user ? (
             <Link href="/dashboard" className="hidden md:block text-sm font-medium hover:text-[hsl(var(--primary))] transition-colors text-[hsl(var(--foreground))]">
               Dashboard
@@ -53,14 +53,14 @@ const Hero = () => {
           )}
           <AnimatedThemeToggler className="text-[hsl(var(--foreground))]" />
           <Link href="/signup">
-            <button className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] px-5 py-2 rounded-full text-sm font-bold hover:bg-[hsl(var(--primary))] transition-colors">
+            <button className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold hover:bg-[hsl(var(--primary))] transition-colors">
               Get App
             </button>
           </Link>
         </div>
       </nav>
 
-      <div className="z-10 max-w-5xl text-center space-y-8 mt-24">
+      <div className="z-10 max-w-5xl text-center space-y-6 sm:space-y-8 mt-16 sm:mt-24">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -74,7 +74,7 @@ const Hero = () => {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.1 }}
-          className="text-6xl md:text-9xl font-bold font-space tracking-tighter leading-[0.9] text-[hsl(var(--foreground))]"
+          className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-bold font-space tracking-tighter leading-[0.9] text-[hsl(var(--foreground))]"
         >
           The <Highlighter color="hsl(var(--primary))">Pulse</Highlighter> of<br />
           Your City.
@@ -84,7 +84,7 @@ const Hero = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
-          className="text-lg md:text-xl text-[hsl(var(--muted-foreground))] max-w-2xl mx-auto font-light"
+          className="text-base sm:text-lg md:text-xl text-[hsl(var(--muted-foreground))] max-w-2xl mx-auto font-light px-4"
         >
           Decode urban chaos with AI. We correlate real-time traffic data with environmental metrics to build the breathable cities of tomorrow.
         </motion.p>
@@ -93,10 +93,10 @@ const Hero = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="flex flex-col md:flex-row gap-4 justify-center pt-8 pointer-events-auto"
+          className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center pt-6 sm:pt-8 pointer-events-auto px-4"
         >
-           <Link href="/signup">
-            <InteractiveHoverButton className="bg-[hsl(var(--primary))] border-[hsl(var(--primary))] text-black w-full md:w-auto">
+           <Link href="/signup" className="w-full sm:w-auto">
+            <InteractiveHoverButton className="bg-[hsl(var(--primary))] border-[hsl(var(--primary))] text-black w-full">
               Start Simulation
             </InteractiveHoverButton>
           </Link>
@@ -154,25 +154,25 @@ const StatCard = ({ number, label }: { number: string, label: string }) => (
 // --- DIGITAL TWIN + DRAW CIRCLE ---
 const DigitalTwin = () => {
   return (
-    <section className="py-32 px-4 relative overflow-hidden">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+    <section className="py-16 sm:py-24 md:py-32 px-4 relative overflow-hidden">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 lg:gap-20 items-center">
         
-        <div className="order-2 lg:order-1 relative h-[800px] w-full flex items-center justify-center">
+        <div className="order-2 lg:order-1 relative h-[500px] sm:h-[600px] md:h-[700px] lg:h-[800px] w-full flex items-center justify-center">
             <div className="absolute inset-0 bg-[hsl(var(--primary))]/20 blur-[120px] rounded-full scale-75" />
-            <div className="relative z-10 p-6 bg-[hsl(var(--card))]/10 backdrop-blur-lg border border-[hsl(var(--border))] rounded-[50px]">
+            <div className="relative z-10 p-4 sm:p-5 md:p-6 bg-[hsl(var(--card))]/10 backdrop-blur-lg border border-[hsl(var(--border))] rounded-[30px] sm:rounded-[40px] md:rounded-[50px]">
                <BorderBeam size={400} duration={10} colorFrom="hsl(var(--primary))" colorTo="hsl(var(--secondary))" />
-               <Iphone src="https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?q=80&w=1000&auto=format&fit=crop" className="w-[300px] md:w-[350px]"/>
+               <Iphone src="https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?q=80&w=1000&auto=format&fit=crop" className="w-[240px] sm:w-[280px] md:w-[300px] lg:w-[350px]"/>
             </div>
             {/* ... floating labels ... */}
         </div>
 
-        <div className="order-1 lg:order-2 space-y-8">
-          <div className="inline-block p-3 rounded-2xl bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] mb-4">
-            <Zap className="w-6 h-6" />
+        <div className="order-1 lg:order-2 space-y-6 sm:space-y-8">
+          <div className="inline-block p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] mb-2 sm:mb-4">
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           
           {/* UPDATED HEADER WITH DRAW SVG ANIMATION */}
-          <h2 className="text-5xl md:text-7xl font-bold font-space leading-tight text-[hsl(var(--foreground))]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold font-space leading-tight text-[hsl(var(--foreground))]">
             Predict the <br />
             <span className="relative inline-block text-[hsl(var(--primary))]">
               Unpredictable.
@@ -188,7 +188,7 @@ const DigitalTwin = () => {
             </span>
           </h2>
 
-          <p className="text-xl text-[hsl(var(--muted-foreground))] leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-[hsl(var(--muted-foreground))] leading-relaxed">
             Our <strong>Digital Twin</strong> technology creates a living replica of your city. 
             Simulate "What-if" scenarios for instant impact analysis.
           </p>

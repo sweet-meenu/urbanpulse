@@ -19,9 +19,7 @@ import {
   IconAlertCircle,
   IconLoader,
 } from "@tabler/icons-react"
-import { fetchAddressFromCoords } from "@/app/actions/geocode"
 import type { LocationSuggestion } from "@/lib/tomtom"
-import { searchLocationsAction } from "@/app/actions/location-search"
 
 // UI Components
 import CardNav from "@/components/ui/card-nav"
@@ -64,11 +62,15 @@ export default function DashboardPage() {
   const [playerMounted, setPlayerMounted] = useState(false)
   const localTimeZone = useMemo(() => getLocalTimeZone(), [])
 
+  // Default location (Mumbai, India) - used as fallback
+  const DEFAULT_COORDS = { lat: 19.0760, lon: 72.8777 }
+
   // --- LOCATION & GEOCODING STATE ---
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null)
   const [addressData, setAddressData] = useState<any | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
   const [isLocating, setIsLocating] = useState(false)
+
 
   // --- WEATHER & AIR-QUALITY STATE ---
   const [weatherSummary, setWeatherSummary] = useState<WeatherSummary | null>(null)
@@ -135,13 +137,29 @@ export default function DashboardPage() {
       console.debug("[Dashboard] TomTomAddress request starting", { lat, lon })
       const start = performance.now()
 
-      const addressData = await fetchAddressFromCoords(lat, lon)
+      const response = await fetch(`/api/geocode?lat=${lat}&lon=${lon}`)
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.warn("[Dashboard] Geocoding failed:", errorData)
+        // Set a default address with coordinates when geocoding fails
+        setAddressData({ 
+          freeformAddress: `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
+          countryCode: 'Unknown'
+        })
+        return
+      }
+      const addressData = await response.json()
       const duration = Math.round(performance.now() - start)
       console.debug("[Dashboard] TomTom response received, duration_ms:", duration)
 
       setAddressData(addressData)
     } catch (err) {
       console.error("TomTom API Error:", err)
+      // Set a fallback address when error occurs
+      setAddressData({ 
+        freeformAddress: `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
+        countryCode: 'Unknown'
+      })
       setLocationError(err instanceof Error ? err.message : "Error contacting TomTom API.")
     } finally {
       setIsLocating(false)
@@ -282,9 +300,9 @@ export default function DashboardPage() {
     inspectGeolocationPermission()
 
     const geoOptions: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
+      enableHighAccuracy: false, // Changed to false for faster response
+      timeout: 30000, // Increased to 30 seconds
+      maximumAge: 10000, // Allow cached position up to 10 seconds old
     }
     console.debug("[Dashboard] Calling getCurrentPosition with options:", geoOptions)
 
@@ -330,7 +348,8 @@ export default function DashboardPage() {
             "[Dashboard] POSITION_UNAVAILABLE: possible causes - no GPS fix, network/location services off, or blocked by system settings.",
           )
         } else if (error.code === (error as any).TIMEOUT || error.code === 3) {
-          setLocationError("Timed out while retrieving location. Try again or increase timeout.")
+          setLocationError("Location request timed out. Please ensure location services are enabled and try again.")
+          console.warn("[Dashboard] TIMEOUT: The request took too long. Try disabling high accuracy or check if location services are enabled.")
         } else {
           setLocationError(`Unable to retrieve your location. (${error.message || "unknown error"})`)
         }
@@ -344,6 +363,58 @@ export default function DashboardPage() {
     )
   }
 
+  // Auto-fetch location on mount if permission already granted, or load default weather data
+  useEffect(() => {
+    // Only run on initial mount
+    if (coords || isLocating || !navigator.geolocation) return
+    
+    // Check if we already have permission
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        if (result.state === 'granted') {
+          console.debug('[Dashboard] Auto-fetching location (permission already granted)')
+          // Directly call getCurrentPosition instead of handleEnableLocation to avoid dependency
+          const geoOptions: PositionOptions = {
+            enableHighAccuracy: false,
+            timeout: 30000,
+            maximumAge: 10000,
+          }
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const { latitude, longitude } = position.coords
+              console.debug('[Dashboard] Auto-location success', { latitude, longitude })
+              setCoords({ lat: latitude, lon: longitude })
+              fetchTomTomAddress(latitude, longitude)
+            },
+            (error) => {
+              console.debug('[Dashboard] Auto-location failed:', error.message)
+              // Load default location weather data
+              setCoords(DEFAULT_COORDS)
+              setAddressData({ freeformAddress: 'Mumbai, India (Default Location)' })
+            },
+            geoOptions
+          )
+        } else {
+          console.debug('[Dashboard] Location permission not granted, loading default weather data')
+          // Load default location weather data
+          setCoords(DEFAULT_COORDS)
+          setAddressData({ freeformAddress: 'Mumbai, India (Default Location)' })
+        }
+      }).catch((err) => {
+        console.debug('[Dashboard] Could not query location permission:', err)
+        // Load default location weather data as fallback
+        setCoords(DEFAULT_COORDS)
+        setAddressData({ freeformAddress: 'Mumbai, India (Default Location)' })
+      })
+    } else {
+      // Browser doesn't support permissions API, load default data
+      console.debug('[Dashboard] Permissions API not supported, loading default weather data')
+      setCoords(DEFAULT_COORDS)
+      setAddressData({ freeformAddress: 'Mumbai, India (Default Location)' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run once on mount
+  
   useEffect(() => {
     if (!coords) return
     fetchWeatherInsights(coords.lat, coords.lon)
@@ -445,8 +516,14 @@ export default function DashboardPage() {
     setSimulationLocation(value)
     if (value.length >= 2) {
       setIsLoadingSuggestions(true)
-      const suggestions = await searchLocationsAction(value)
-      setLocationSuggestions(suggestions)
+      try {
+        const response = await fetch(`/api/location-search?query=${encodeURIComponent(value)}`)
+        const suggestions = await response.json()
+        setLocationSuggestions(suggestions)
+      } catch (error) {
+        console.error('Location search error:', error)
+        setLocationSuggestions([])
+      }
       setIsLoadingSuggestions(false)
     } else {
       setLocationSuggestions([])
@@ -613,7 +690,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))] font-sans selection:bg-[hsl(var(--primary))]/30 overflow-x-hidden relative transition-colors duration-500">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-indigo-900/20 dark:to-purple-900/20 text-[hsl(var(--foreground))] font-sans selection:bg-[hsl(var(--primary))]/30 overflow-x-hidden relative transition-colors duration-500">
       {/* loading overlay moved to app/loading.tsx */}
 
       {/* 1. TOP NAV: CardNav with Theming */}
@@ -640,37 +717,37 @@ export default function DashboardPage() {
                 src={avatarSrc || "/placeholder.svg"}
                 alt={user?.displayName || user?.email || "User avatar"}
                 onError={() => setAvatarError(true)}
-                className="w-16 h-16 rounded-md object-cover border-2 border-gray-100 dark:border-neutral-800"
+                className="w-16 h-16 rounded-xl object-cover border-4 border-indigo-200 dark:border-indigo-800 shadow-lg shadow-indigo-500/50 ring-4 ring-indigo-100 dark:ring-indigo-900/50"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-16 h-16 rounded-md flex items-center justify-center bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 border-2 border-gray-100 dark:border-neutral-800">
+              <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white border-4 border-indigo-200 dark:border-indigo-800 shadow-lg shadow-indigo-500/50 ring-4 ring-indigo-100 dark:ring-indigo-900/50 font-bold text-xl">
                 {initials}
               </div>
             )}
 
             <div>
-              <h2 className="text-[hsl(var(--muted-foreground))] text-lg">Good Evening,</h2>
-              <h1 className="text-4xl md:text-5xl font-bold font-space text-[hsl(var(--foreground))]">
+              <h2 className="text-lg bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Good Evening,</h2>
+              <h1 className="text-4xl md:text-5xl font-bold font-space bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 {user.displayName?.split(" ")[0] || "User"}
               </h1>
             </div>
             <button
               onClick={handleSignOut}
-              className="ml-3 px-3 py-1 rounded bg-red-600 text-white text-sm hover:bg-red-700 transition"
+              className="ml-3 px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-pink-600 text-white text-sm hover:from-red-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
             >
               Sign out
             </button>
           </div>
 
           <div className="flex gap-4">
-            <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] px-4 py-2 rounded-xl text-center shadow-sm">
-              <p className="text-xs text-[hsl(var(--muted-foreground))] uppercase font-bold">Level</p>
-              <p className="text-xl font-mono text-[hsl(var(--primary))]">5</p>
+            <div className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 border-2 border-indigo-300 dark:border-indigo-700 px-4 py-2 rounded-xl text-center shadow-lg">
+              <p className="text-xs text-indigo-700 dark:text-indigo-300 uppercase font-bold">Level</p>
+              <p className="text-xl font-mono bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-bold">5</p>
             </div>
-            <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] px-4 py-2 rounded-xl text-center shadow-sm">
-              <p className="text-xs text-[hsl(var(--muted-foreground))] uppercase font-bold">$PULSE</p>
-              <p className="text-xl font-mono text-[hsl(var(--secondary))]">1,240</p>
+            <div className="bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 border-2 border-purple-300 dark:border-purple-700 px-4 py-2 rounded-xl text-center shadow-lg">
+              <p className="text-xs text-purple-700 dark:text-purple-300 uppercase font-bold">$PULSE</p>
+              <p className="text-xl font-mono bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-bold">1,240</p>
             </div>
           </div>
         </motion.div>
@@ -686,13 +763,8 @@ export default function DashboardPage() {
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <button className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold px-8 py-4 rounded-full hover:scale-105 transition-transform shadow-lg group/modal-btn relative">
-                <span className="group-hover/modal-btn:translate-x-40 text-center transition duration-500">
-                  Launch New Simulation
-                </span>
-                <div className="-translate-x-40 group-hover/modal-btn:translate-x-0 flex items-center justify-center absolute inset-0 transition duration-500 text-[hsl(var(--primary-foreground))] z-20">
-                  🚀
-                </div>
+              <button className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold px-8 py-4 rounded-full hover:scale-105 transition-transform shadow-lg">
+                Launch New Simulation
               </button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl bg-[hsl(var(--card))] border-[hsl(var(--border))]">
@@ -816,10 +888,10 @@ export default function DashboardPage() {
         {/* --- GRID LAYOUT --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* --- LOCATION CARD --- */}
-          <div className="bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] p-6 rounded-3xl col-span-2 relative overflow-hidden group shadow-lg">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-bold text-[hsl(var(--foreground))] flex items-center gap-2">
-                <IconMapPin size={20} className="text-[hsl(var(--primary))]" />
+          <div className="bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] p-4 sm:p-6 rounded-2xl sm:rounded-3xl md:col-span-2 relative overflow-hidden group shadow-lg">
+            <div className="flex justify-between items-start mb-3 sm:mb-4">
+              <h3 className="text-base sm:text-lg font-bold text-[hsl(var(--foreground))] flex items-center gap-2">
+                <IconMapPin size={18} className="text-[hsl(var(--primary))] sm:w-5 sm:h-5" />
                 Current Location
               </h3>
               {addressData && (
@@ -829,21 +901,21 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <div className="h-48 w-full bg-[hsl(var(--background))]/50 rounded-xl border border-[hsl(var(--border))] flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="h-40 sm:h-48 w-full bg-[hsl(var(--background))]/50 rounded-lg sm:rounded-xl border border-[hsl(var(--border))] flex flex-col items-center justify-center relative overflow-hidden">
               {!coords && !isLocating && (
-                <div className="text-center z-10 p-4">
-                  <p className="text-[hsl(var(--muted-foreground))] mb-4">
+                <div className="text-center z-10 p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-[hsl(var(--muted-foreground))] mb-3 sm:mb-4">
                     Enable location to see real-time congestion and address data.
                   </p>
                   <button
                     onClick={handleEnableLocation}
-                    className="group/btn flex items-center gap-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] px-6 py-3 rounded-full font-bold hover:bg-[hsl(var(--primary))] transition-all mx-auto shadow-md"
+                    className="group/btn flex items-center gap-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] px-4 sm:px-6 py-2 sm:py-3 rounded-full text-sm sm:text-base font-bold hover:bg-[hsl(var(--primary))] transition-all mx-auto shadow-md"
                   >
-                    <IconNavigation size={18} className="group-hover/btn:rotate-45 transition-transform" />
+                    <IconNavigation size={16} className="group-hover/btn:rotate-45 transition-transform sm:w-[18px] sm:h-[18px]" />
                     Enable Location
                   </button>
                   {locationError && (
-                    <p className="text-red-400 text-xs mt-3 flex items-center justify-center gap-1">
+                    <p className="text-red-400 text-xs mt-2 sm:mt-3 flex items-center justify-center gap-1">
                       <IconAlertCircle size={14} /> {locationError}
                     </p>
                   )}
@@ -851,33 +923,33 @@ export default function DashboardPage() {
               )}
 
               {isLocating && (
-                <div className="flex flex-col items-center gap-3 text-[hsl(var(--primary))]">
-                  <IconLoader size={32} className="animate-spin" />
-                  <span className="text-sm font-mono animate-pulse">Fetching...</span>
+                <div className="flex flex-col items-center gap-2 sm:gap-3 text-[hsl(var(--primary))]">
+                  <IconLoader size={24} className="animate-spin sm:w-8 sm:h-8" />
+                  <span className="text-xs sm:text-sm font-mono animate-pulse">Fetching...</span>
                 </div>
               )}
 
               {addressData && (
-                <div className="w-full h-full p-6 text-left flex flex-col justify-between relative z-10">
+                <div className="w-full h-full p-4 sm:p-6 text-left flex flex-col justify-between relative z-10">
                   <div>
-                    <h2 className="text-3xl font-bold text-[hsl(var(--foreground))] mb-1">
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-[hsl(var(--foreground))] mb-1">
                       {addressData.municipality || addressData.localName}
                     </h2>
-                    <p className="text-[hsl(var(--muted-foreground))] text-lg">
+                    <p className="text-sm sm:text-base md:text-lg text-[hsl(var(--muted-foreground))]">
                       {addressData.streetName || "Unidentified Road"} {addressData.streetNumber}
                     </p>
-                    <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1 opacity-70">
+                    <p className="text-xs sm:text-sm text-[hsl(var(--muted-foreground))] mt-1 opacity-70">
                       {addressData.countrySubdivision}, {addressData.country}
                     </p>
                   </div>
-                  <div className="flex gap-4 mt-4">
-                    <div className="bg-[hsl(var(--card))] px-3 py-1.5 rounded-lg border border-[hsl(var(--border))] shadow-sm">
+                  <div className="flex gap-2 sm:gap-4 mt-3 sm:mt-4">
+                    <div className="bg-[hsl(var(--card))] px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-[hsl(var(--border))] shadow-sm">
                       <span className="text-xs text-[hsl(var(--muted-foreground))] block">LAT</span>
-                      <span className="font-mono text-[hsl(var(--primary))]">{coords?.lat.toFixed(4)}</span>
+                      <span className="font-mono text-xs sm:text-sm text-[hsl(var(--primary))]">{coords?.lat.toFixed(4)}</span>
                     </div>
-                    <div className="bg-[hsl(var(--card))] px-3 py-1.5 rounded-lg border border-[hsl(var(--border))] shadow-sm">
+                    <div className="bg-[hsl(var(--card))] px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-[hsl(var(--border))] shadow-sm">
                       <span className="text-xs text-[hsl(var(--muted-foreground))] block">LON</span>
-                      <span className="font-mono text-[hsl(var(--primary))]">{coords?.lon.toFixed(4)}</span>
+                      <span className="font-mono text-xs sm:text-sm text-[hsl(var(--primary))]">{coords?.lon.toFixed(4)}</span>
                     </div>
                   </div>
                 </div>
@@ -890,35 +962,35 @@ export default function DashboardPage() {
           </div>
 
           {/* Incidents quick actions */}
-          <div className="bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] p-6 rounded-3xl shadow-lg">
-            <h3 className="text-lg font-bold text-[hsl(var(--foreground))] mb-4">Incidents & Reports</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Report an incident or view reports from the community.</p>
-            <div className="flex gap-3">
-              <Link href="/incidents" className="px-4 py-2 rounded-md bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold">Report Incident</Link>
-              <Link href="/incidents" className="px-4 py-2 rounded-md border border-[hsl(var(--border))]">My Reports</Link>
-              <Link href="/community" className="px-4 py-2 rounded-md border border-[hsl(var(--border))]">Community</Link>
+          <div className="bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg">
+            <h3 className="text-base sm:text-lg font-bold text-[hsl(var(--foreground))] mb-3 sm:mb-4">Incidents & Reports</h3>
+            <p className="text-xs sm:text-sm text-[hsl(var(--muted-foreground))] mb-3 sm:mb-4">Report an incident or view reports from the community.</p>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <Link href="/incidents" className="px-3 sm:px-4 py-2 rounded-md bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-sm text-center">Report Incident</Link>
+              <Link href="/incidents" className="px-3 sm:px-4 py-2 rounded-md border border-[hsl(var(--border))] text-sm text-center">My Reports</Link>
+              <Link href="/community" className="px-3 sm:px-4 py-2 rounded-md border border-[hsl(var(--border))] text-sm text-center">Community</Link>
             </div>
           </div>
 
           {/* Notifications */}
-          <div className="bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] p-6 rounded-3xl shadow-lg">
-            <h3 className="text-lg font-bold text-[hsl(var(--foreground))] mb-4">Notifications</h3>
-            <ul className="space-y-4">
-              <li className="text-sm text-[hsl(var(--muted-foreground))] flex gap-3 items-start">
-                <div className="w-2 h-2 mt-1.5 bg-[hsl(var(--primary))] rounded-full shrink-0 shadow-[0_0_10px_hsl(var(--primary))]" />
+          <div className="bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))] p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg">
+            <h3 className="text-base sm:text-lg font-bold text-[hsl(var(--foreground))] mb-3 sm:mb-4">Notifications</h3>
+            <ul className="space-y-3 sm:space-y-4">
+              <li className="text-xs sm:text-sm text-[hsl(var(--muted-foreground))] flex gap-2 sm:gap-3 items-start">
+                <div className="w-2 h-2 mt-1 sm:mt-1.5 bg-[hsl(var(--primary))] rounded-full shrink-0 shadow-[0_0_10px_hsl(var(--primary))]" />
                 <span>
                   Reward claimed: <span className="text-[hsl(var(--foreground))] font-medium">Free Coffee</span>
                 </span>
               </li>
-              <li className="text-sm text-[hsl(var(--muted-foreground))] flex gap-3 items-start">
-                <div className="w-2 h-2 mt-1.5 bg-[hsl(var(--secondary))] rounded-full shrink-0" />
+              <li className="text-xs sm:text-sm text-[hsl(var(--muted-foreground))] flex gap-2 sm:gap-3 items-start">
+                <div className="w-2 h-2 mt-1 sm:mt-1.5 bg-[hsl(var(--secondary))] rounded-full shrink-0" />
                 <span>
                   New Eco-Route available for{" "}
                   <span className="text-[hsl(var(--foreground))] font-medium">Morning Commute</span>
                 </span>
               </li>
-              <li className="text-sm text-[hsl(var(--muted-foreground))] flex gap-3 items-start">
-                <div className="w-2 h-2 mt-1.5 bg-yellow-500 rounded-full shrink-0 animate-pulse" />
+              <li className="text-xs sm:text-sm text-[hsl(var(--muted-foreground))] flex gap-2 sm:gap-3 items-start">
+                <div className="w-2 h-2 mt-1 sm:mt-1.5 bg-yellow-500 rounded-full shrink-0 animate-pulse" />
                 <span>
                   High AQI alert in <span className="text-[hsl(var(--foreground))] font-medium">Downtown Sector 4</span>
                 </span>
@@ -941,10 +1013,11 @@ export default function DashboardPage() {
         onRefresh={coords ? handleRefreshWeather : undefined}
       />
 
-      <div className="fixed bottom-8 inset-x-0 flex justify-center z-50">
+      <div className="fixed bottom-8 right-8 md:bottom-8 md:left-0 md:right-0 md:mx-auto flex md:justify-center z-50">
         <FloatingDock
           items={dockItems}
           desktopClassName="bg-[hsl(var(--card))]/90 border border-[hsl(var(--border))] backdrop-blur-md shadow-2xl"
+          mobileClassName="bg-[hsl(var(--card))]/90 border border-[hsl(var(--border))] backdrop-blur-md shadow-2xl"
         />
       </div>
     </div>

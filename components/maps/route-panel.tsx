@@ -11,7 +11,6 @@ import {
   Route as RouteIcon, 
   TrendingUp, 
   Zap, 
-  MapPin,
   AlertTriangle,
   Car,
   Fuel
@@ -116,15 +115,18 @@ export function RoutePanel({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <RouteIcon className="h-5 w-5" />
-          Available Routes ({routes.length})
+    <Card className="border-muted/50 shadow-lg bg-card/50 backdrop-blur-sm">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <div className="p-1.5 rounded-lg bg-primary/10">
+            <RouteIcon className="h-4 w-4 text-primary" />
+          </div>
+          Available Routes
+          <Badge variant="secondary" className="ml-auto">{routes.length}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-[500px] pr-4">
           <div className="space-y-3">
             {routes.map((route, index) => {
               const isSelected = selectedRouteId === route.id
@@ -133,58 +135,62 @@ export function RoutePanel({
               return (
                 <Card 
                   key={route.id}
-                  className={`cursor-pointer transition-all ${
+                  className={`cursor-pointer transition-all duration-200 ${
                     isSelected 
-                      ? 'ring-2 ring-primary shadow-lg' 
-                      : 'hover:shadow-md'
+                      ? 'ring-2 ring-primary shadow-xl scale-[1.02] bg-primary/5' 
+                      : 'hover:shadow-lg hover:scale-[1.01] bg-card/80'
                   }`}
                   onClick={() => onSelectRoute(route.id)}
                 >
                   <CardContent className="p-4">
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
                       {/* Header */}
                       <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-2 rounded-full ${getRouteTypeColor(route.routeType)}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-xl ${getRouteTypeColor(route.routeType)} shadow-md`}>
                             <div className="text-white">
                               {getRouteTypeIcon(route.routeType)}
                             </div>
                           </div>
                           <div>
-                            <h3 className="font-semibold">
+                            <h3 className="font-bold text-base">
                               {route.routeType || `Route ${index + 1}`}
                             </h3>
                             {index === 0 && (
-                              <Badge variant="secondary" className="text-xs">
-                                Recommended
+                              <Badge variant="secondary" className="text-[10px] mt-1 bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300">
+                                ⭐ Recommended
                               </Badge>
                             )}
                           </div>
                         </div>
                         {isSelected && (
-                          <Badge variant="default">Selected</Badge>
+                          <Badge className="bg-primary text-primary-foreground shadow-sm">Selected</Badge>
                         )}
                       </div>
 
-                      <Separator />
+                      <Separator className="opacity-50" />
 
-                      {/* Main Stats */}
+                      {/* Main Stats - Grid */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Duration</p>
-                            <p className="font-semibold">
+                        <div className="flex items-start gap-2.5 p-3 rounded-lg bg-muted/50">
+                          <div className="p-1.5 rounded-md bg-background/80 mt-0.5">
+                            <Clock className="h-3.5 w-3.5 text-blue-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Duration</p>
+                            <p className="font-bold text-base mt-0.5">
                               {formatDuration(summary.travelTimeInSeconds || 0)}
                             </p>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                          <Navigation className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Distance</p>
-                            <p className="font-semibold">
+                        <div className="flex items-start gap-2.5 p-3 rounded-lg bg-muted/50">
+                          <div className="p-1.5 rounded-md bg-background/80 mt-0.5">
+                            <Navigation className="h-3.5 w-3.5 text-purple-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Distance</p>
+                            <p className="font-bold text-base mt-0.5">
                               {formatDistance(summary.lengthInMeters || 0)}
                             </p>
                           </div>
@@ -193,11 +199,11 @@ export function RoutePanel({
 
                       {/* Traffic Info */}
                       {(summary.trafficDelayInSeconds || 0) > 0 && (
-                        <div className="flex items-center gap-2 p-2 bg-orange-50 rounded-lg">
-                          <AlertTriangle className="h-4 w-4 text-orange-500" />
-                          <div className="flex-1">
-                            <p className="text-xs text-muted-foreground">Traffic Delay</p>
-                            <p className="text-sm font-medium text-orange-700">
+                        <div className="flex items-center gap-2.5 p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-900">
+                          <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">Traffic Delay</p>
+                            <p className="text-sm font-bold text-orange-700 dark:text-orange-300">
                               +{formatDuration(summary.trafficDelayInSeconds || 0)}
                             </p>
                           </div>
@@ -206,19 +212,21 @@ export function RoutePanel({
 
                       {/* Times */}
                       {(summary.departureTime || summary.arrivalTime) && (
-                        <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center justify-between text-xs p-2 rounded-md bg-muted/30">
                           {summary.departureTime && (
-                            <div>
-                              <span className="text-muted-foreground">Depart: </span>
-                              <span className="font-medium">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                              <span className="text-muted-foreground">Depart</span>
+                              <span className="font-semibold">
                                 {formatTime(summary.departureTime)}
                               </span>
                             </div>
                           )}
                           {summary.arrivalTime && (
-                            <div>
-                              <span className="text-muted-foreground">Arrive: </span>
-                              <span className="font-medium">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                              <span className="text-muted-foreground">Arrive</span>
+                              <span className="font-semibold">
                                 {formatTime(summary.arrivalTime)}
                               </span>
                             </div>
@@ -226,48 +234,19 @@ export function RoutePanel({
                         </div>
                       )}
 
-                      {/* Consumption */}
-                      {(summary.fuelConsumptionInLiters || summary.batteryConsumptionInkWh) && (
-                        <div className="flex items-center gap-2 text-xs">
-                          <Fuel className="h-3 w-3 text-muted-foreground" />
-                          {summary.fuelConsumptionInLiters && (
-                            <span>
-                              {summary.fuelConsumptionInLiters.toFixed(1)} L
-                            </span>
-                          )}
-                          {summary.batteryConsumptionInkWh && (
-                            <span>
-                              {summary.batteryConsumptionInkWh.toFixed(1)} kWh
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Action Buttons */}
+                      {/* Action Button */}
                       {isSelected && (
-                        <div className="flex gap-2 pt-2">
-                          <Button 
-                            size="sm" 
-                            className="flex-1"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onStartNavigation?.(route.id)
-                            }}
-                          >
-                            <Car className="h-4 w-4 mr-2" />
-                            Start Navigation
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              // Zoom to route bounds - handled by map
-                            }}
-                          >
-                            <MapPin className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button 
+                          size="sm" 
+                          className="w-full h-10 shadow-md hover:shadow-lg transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onStartNavigation?.(route.id)
+                          }}
+                        >
+                          <Car className="h-4 w-4 mr-2" />
+                          Start Navigation
+                        </Button>
                       )}
                     </div>
                   </CardContent>

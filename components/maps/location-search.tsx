@@ -92,16 +92,16 @@ export function LocationSearch({
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => suggestions.length > 0 && setIsFocused(true)}
+            onFocus={() => setIsFocused(true)}
             placeholder={placeholder}
-            className="pl-10 pr-10"
+            className="pl-10 pr-10 h-12 bg-background/50 border-muted-foreground/20 focus:border-primary transition-colors"
             role="combobox"
             aria-autocomplete="list"
             aria-expanded={showSuggestions}
@@ -112,45 +112,45 @@ export function LocationSearch({
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
               onClick={() => {
                 onChange("")
                 setIsFocused(false)
               }}
             >
-              <X className="h-3 w-3" />
+              <X className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>
         
-        <Button onClick={onSearch} disabled={!value || loading}>
-          <Search className="h-4 w-4 mr-2" />
-          Search
-        </Button>
-
-        {showCurrentLocation && (
-          <Button 
-            variant="outline" 
-            onClick={onCurrentLocation}
-            title="Use current location"
-          >
-            <Navigation2 className="h-4 w-4" />
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {showCurrentLocation && (
+            <Button 
+              variant="outline" 
+              onClick={onCurrentLocation}
+              title="Use current location"
+              className="h-12 px-4 border-muted-foreground/20 hover:bg-primary/10 hover:border-primary/50 hover:text-primary transition-all"
+            >
+              <Navigation2 className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline text-sm">My Location</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {loading && (
-        <div className="absolute top-full left-0 right-0 mt-2 text-sm text-muted-foreground">
-          Searching...
+        <div className="absolute top-full left-0 right-0 mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <span>Searching...</span>
         </div>
       )}
 
       {showSuggestions && suggestions.length > 0 && (
-        <Card className="absolute top-full left-0 right-0 mt-2 z-50 p-0 shadow-lg">
-          <ScrollArea className="max-h-[300px]">
+        <Card className="absolute top-full left-0 right-0 mt-2 z-50 p-0 shadow-2xl border-muted/50 backdrop-blur-sm bg-card/95">
+          <ScrollArea className="max-h-[400px]">
             <ul 
               id="location-suggestions-list" 
-              className="p-1"
+              className="p-2"
               role="listbox"
             >
               {suggestions.map((suggestion, idx) => (
@@ -160,24 +160,30 @@ export function LocationSearch({
                   role="option"
                   aria-selected={idx === activeIndex}
                   className={`
-                    flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors
-                    ${idx === activeIndex ? "bg-accent" : "hover:bg-accent/50"}
+                    flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all
+                    ${idx === activeIndex 
+                      ? "bg-primary/15 border-primary/50 shadow-md scale-[1.02]" 
+                      : "hover:bg-accent/50 border-transparent"
+                    }
+                    border
                   `}
                   onClick={() => handleSelect(suggestion)}
                   onMouseEnter={() => setActiveIndex(idx)}
                 >
-                  <MapPin className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
+                  <div className={`mt-0.5 p-2 rounded-lg ${idx === activeIndex ? 'bg-primary/20' : 'bg-muted/50'}`}>
+                    <MapPin className={`h-4 w-4 ${idx === activeIndex ? 'text-primary' : 'text-muted-foreground'}`} />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{suggestion.name}</div>
+                    <div className="font-semibold text-sm leading-tight">{suggestion.name}</div>
                     {suggestion.address && (
-                      <div className="text-sm text-muted-foreground truncate">
+                      <div className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
                         {suggestion.address}
                       </div>
                     )}
                   </div>
                   {idx === 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      Best
+                    <Badge variant="default" className="text-xs shrink-0 bg-primary/20 text-primary border-primary/30">
+                      Top
                     </Badge>
                   )}
                 </li>

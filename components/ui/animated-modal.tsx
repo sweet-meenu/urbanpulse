@@ -79,7 +79,7 @@ export const ModalBody = ({
       <motion.div
         ref={modalRef}
         className={cn(
-          "min-h-[50%] max-h-[90%] md:max-w-[40%] bg-white dark:bg-neutral-950 border border-transparent dark:border-neutral-800 md:rounded-2xl relative z-50 flex flex-col flex-1 overflow-hidden pointer-events-auto",
+          "min-h-[50%] max-h-[90%] w-full sm:max-w-[90%] md:max-w-[80%] lg:max-w-[60%] xl:max-w-[40%] bg-white dark:bg-neutral-950 border border-transparent dark:border-neutral-800 sm:rounded-2xl relative z-50 flex flex-col flex-1 overflow-hidden pointer-events-auto mx-4",
           className,
         )}
         initial={{ opacity: 0, scale: 0.5, rotateX: 40, y: 40 }}
@@ -149,10 +149,10 @@ const CloseIcon = () => {
   )
 }
 
-export const useOutsideClick = (ref: React.RefObject<HTMLDivElement | null>, callback: Function) => {
+export const useOutsideClick = (ref: React.RefObject<HTMLDivElement | null>, callback: (event: MouseEvent | TouchEvent) => void) => {
   useEffect(() => {
-    const listener = (event: any) => {
-      if (!ref.current || ref.current.contains(event.target)) {
+    const listener = (event: MouseEvent | TouchEvent) => {
+      if (!ref.current || ref.current.contains(event.target as Node)) {
         return
       }
       callback(event)
