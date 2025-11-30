@@ -1,13 +1,19 @@
 "use client";
 import { useEffect, useState, useRef } from "react"
+import dynamic from "next/dynamic"
 import { searchLocationsAction } from "@/app/actions/location-search"
 import type { LocationSuggestion } from "@/lib/tomtom"
-import MapView from "@/components/ui/map-view"
 import { LocationSearch } from "@/components/maps/location-search"
 import { RoutePanel } from "@/components/maps/route-panel"
 import { RouteDetails } from "@/components/maps/route-details"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+
+// Dynamically import MapView with SSR disabled to avoid Leaflet SSR issues
+const MapView = dynamic(() => import("@/components/ui/map-view"), {
+  ssr: false,
+  loading: () => <div className="h-full w-full bg-muted animate-pulse" />
+})
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MapPinIcon, RouteIcon, X } from "lucide-react"
